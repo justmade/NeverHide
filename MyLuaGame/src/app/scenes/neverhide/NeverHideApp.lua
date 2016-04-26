@@ -38,33 +38,17 @@ function NeverHideApp:onEnter()
 
   local r = Role.new(40,500);
   self:addChild(r)
-  -- r:setPosition(cc.p(40,300))
   self.role = r
-  -- self.drawNode = display.newDrawNode();
-  -- self.lineColor = cc.c4f(4/255, 186/255, 238/255, 0.3)
-  -- self:addChild(self.drawNode);
-  -- self:createUpLine();
-  -- self:createDownLine();
 
-
-  -- scheduler.scheduleUpdateGlobal(handler(self,self.onGameUpdate))
   self.downContainer = display.newSprite();
   self.upContainer = display.newSprite();
 
-
-
   self:addChild(self.upContainer);
-  -- self.upContainer:setPositionY(display.height - self.levelHeight * self.cellGap);
   self:addChild(self.downContainer);
-  -- self.downContainer:setPositionY(-self.cellGap * 1.2)
-
 
   self:resetMap()
   self:addTouchListener()
 
-  -- self.touchController = TouchController.new();
-  -- self:addChild(self.touchController)
-  -- self.touchController:setPositionY(0)
 end
 
 --读取新的地图
@@ -120,7 +104,7 @@ function NeverHideApp:drawTiledMap(data,container)
       local grassLeft = display.newSprite("gfx/ground.png")
       grassLeft:setTextureRect(cc.rect(tX * self.cellGap , tY * self.cellGap ,self.cellGap,self.cellGap));
       grassLeft:setPosition(posX,posY)
-      grassLeft:setAnchorPoint(cc.p(0,1))
+      grassLeft:setAnchorPoint(cc.p(0,0))
       container:addChild(grassLeft);
     end
   end
@@ -158,7 +142,7 @@ end
 function NeverHideApp:onGameUpdate()
   self.role:applyFroce(Vector2D.new(0,-2))
   for i,v in ipairs(self.downGroundRects) do
-     if cc.rectContainsPoint(v , cc.p(self.role:getPositionX() , self.role:getPositionY())) then
+     if cc.rectContainsPoint(v , cc.p(self.role:getPositionX() , self.role:getPositionY()-10)) then
         self.role.speed.y = 0
         self.role:applyFroce(Vector2D.new(0,2))
         local rX = self.role:getPositionX()
@@ -169,7 +153,8 @@ function NeverHideApp:onGameUpdate()
 end
 
 function NeverHideApp:addTouchListener()
-
+    self.touchController = TouchController.new()
+    self:addChild(self.touchController)
 end
 
 
@@ -216,7 +201,7 @@ end
 function NeverHideApp:setRoleByPosX(posx)
   for i,v in ipairs(self.downGroundRects) do
     if posx <= (v.x + v.width) then
-        self.role:setPositionY(v.y)
+        self.role:setPosY(v.y + v.height)
         break
     end
   end
@@ -230,11 +215,6 @@ function NeverHideApp:update(dt)
     scheduler.unscheduleGlobal(self.currentEnterFrame)
   end
 
-  -- local oriY = self.upContainer:getPositionY();
-  -- self.upContainer:setPositionY(oriY - 2);
-  -- for i,v in ipairs(self.upGroundRects) do
-  --   v.y = v.y - 2
-  -- end
 
   if self:checkGoundHit() then
       scheduler.unscheduleGlobal(self.currentEnterFrame)
@@ -245,12 +225,12 @@ function NeverHideApp:update(dt)
       scheduler.performWithDelayGlobal(handler(self,self.resetMap), 1)
   end
   self:onGameUpdate();
-  -- local mV = self.touchController.moveVec;
-  -- local jV = self.touchController.jumpVec
-  -- self.role:applyFroce(jV)
-  -- self.role:setHSpeed(mV:Mult(mV , 5));
+  local mV = self.touchController.moveVec;
+  local jV = self.touchController.jumpVec
+  self.role:applyFroce(jV)
+  self.role:setHSpeed(mV:Mult(mV , 5));
   self.role:onUpdate();
-  -- jV:mult(0)
+  jV:mult(0)
 end
 
 --墙壁合并中

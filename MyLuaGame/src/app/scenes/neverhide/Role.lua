@@ -27,10 +27,14 @@ function Role:onUpdate()
   self.position:add(self.speed)
   self:setPositionX(self.position.x)
   self:setPositionY(self.position.y)
-
   self.acceleration:mult(0)
 end
 
+function Role:setPosY(value)
+  self.position.y = value
+end
+
+--给外力
 function Role:applyFroce(v)
   self.acceleration:add(v)
 end
