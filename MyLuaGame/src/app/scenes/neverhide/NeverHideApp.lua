@@ -8,6 +8,7 @@ local PosInfo     = require("app.scenes.neverhide.PosInfo")
 local BloodEffect = require("app.scenes.neverhide.HeroUpgradeEffect")
 local Vector2D    = require("app.scenes.neverhide.Vector2D")
 local TouchController = import(".TouchController")
+local Collision   = require("app.data.Collision")
 
 
 function NeverHideApp:ctor()
@@ -36,7 +37,7 @@ function NeverHideApp:onEnter()
   self:addChild(bg)
   bg:setAnchorPoint(cc.p(0,0))
 
-  local r = Role.new(40,500);
+  local r = Role.new(40,300);
   self:addChild(r)
   self.role = r
 
@@ -114,11 +115,13 @@ end
 function NeverHideApp:findGround()
     --下层路面每个地形的rect数组
     self.downGroundRects = {}
+    self.allGroundRects = {}
     for i,v in ipairs(self.downData) do
         if v ~= 0 then
           local index = i-1;
           local posX = (index % self.levelWidth) * self.cellGap
           local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap
+          table.insert(self.allGroundRects , cc.rect(posX,posY,self.cellGap,self.cellGap))
           if self.downGroundRects[index % self.levelWidth +1 ] == nil then
               self.downGroundRects[index % self.levelWidth +1] = cc.rect(posX,posY,self.cellGap,self.cellGap)
           end
@@ -141,14 +144,32 @@ end
 
 function NeverHideApp:onGameUpdate()
   self.role:applyFroce(Vector2D.new(0,-2))
-  for i,v in ipairs(self.downGroundRects) do
-     if cc.rectContainsPoint(v , cc.p(self.role:getPositionX() , self.role:getPositionY()-10)) then
+  --上下左右 用于标记那个方向上已经进行过碰撞检测了
+  local collisionState = {0,0,0,0}
+  for i,v in ipairs(self.allGroundRects) do
+    local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 15 , self.role:getPositionY()-10 , 30,30),v)
+
+    --  if cc.rectContainsPoint(v , cc.p(self.role:getPositionX() , self.role:getPositionY()-10)) then
+    if state == "top" and collisionState[1] ~= 1 and self.role:jumpState() == false then
+      collisionState[1] = 1
+        -- print("state",state,i);
         self.role.speed.y = 0
         self.role:applyFroce(Vector2D.new(0,2))
         local rX = self.role:getPositionX()
         self:setRoleByPosX(rX)
-       break
-     end
+      --  break
+    elseif state == "left" and collisionState[3] ~= 1 then
+      collisionState[3] = 1
+        -- print("state",state,i);
+        self.role:applyFroce(Vector2D.new(-5,0))
+        -- self.role:applyFroce(Vector2D.new(0,2))
+        self.role:setPosX(v.x - 30)
+    elseif state == "right" and collisionState[4] ~= 1 then
+        print("state",state,i);
+      collisionState[4] = 1
+      self.role:applyFroce(Vector2D.new(5,0))
+      self.role:setPosX(v.x + v.width + 15)
+   end
   end
 end
 
@@ -228,7 +249,9 @@ function NeverHideApp:update(dt)
   local mV = self.touchController.moveVec;
   local jV = self.touchController.jumpVec
   self.role:applyFroce(jV)
-  self.role:setHSpeed(mV:Mult(mV , 5));
+  self.role:applyFroce(mV:Mult(mV , 5));
+
+  -- self:onGameUpdate();
   self.role:onUpdate();
   jV:mult(0)
 end

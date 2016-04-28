@@ -23,10 +23,22 @@ function Role:ctor(x,y,mass)
 end
 
 function Role:onUpdate()
-  self.speed:add(self.acceleration)
+  self.speed.y = self.speed.y + self.acceleration.y
+  -- print("onUpdate" , self.speed.y )
+  self.speed.x = self.acceleration.x
+  -- self.speed:add(self.acceleration)
+  if self.speed.x >=5 then
+    self.speed.x = 5;
+  end
+
+  if self.speed.x <=-5 then
+    self.speed.x = -5;
+  end
+
   self.position:add(self.speed)
   self:setPositionX(self.position.x)
   self:setPositionY(self.position.y)
+  -- print("pos",self.position.y)
   self.acceleration:mult(0)
 end
 
@@ -34,8 +46,22 @@ function Role:setPosY(value)
   self.position.y = value
 end
 
+function Role:jumpState()
+  -- print('speed',self.speed.y)
+  if self.speed.y > 0 then
+    return true
+  else
+    return false
+  end
+end
+
+function Role:setPosX(value)
+  self.position.x = value
+end
+
 --给外力
 function Role:applyFroce(v)
+  -- print("applyFroce",v.y)
   self.acceleration:add(v)
 end
 

@@ -67,6 +67,7 @@ function TouchController:onTouchHandler(event)
   end
   if event.name == "began" then
     if self.jumpID == touchID then
+      print("jump!!!")
       self.jumpID = -1
       self.jumpVec.y = 20
     end
