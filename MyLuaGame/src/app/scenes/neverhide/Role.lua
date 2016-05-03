@@ -24,7 +24,7 @@ end
 
 function Role:onUpdate()
   self.speed.y = self.speed.y + self.acceleration.y
-  -- print("onUpdate" , self.speed.y )
+  print("onUpdate" , self.speed.y )
   self.speed.x = self.acceleration.x
   -- self.speed:add(self.acceleration)
   if self.speed.x >=5 then
@@ -38,7 +38,7 @@ function Role:onUpdate()
   self.position:add(self.speed)
   self:setPositionX(self.position.x)
   self:setPositionY(self.position.y)
-  -- print("pos",self.position.y)
+  print("pos",self.position.y)
   self.acceleration:mult(0)
 end
 
@@ -67,7 +67,7 @@ end
 
 --设置水平方向的速度
 function Role:setHSpeed(v)
-  self.speed.x = v.x
+  self.speed.x = v
 end
 
 function Role:playAnimation()

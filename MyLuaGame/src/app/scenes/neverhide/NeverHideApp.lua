@@ -121,9 +121,10 @@ function NeverHideApp:findGround()
           local index = i-1;
           local posX = (index % self.levelWidth) * self.cellGap
           local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap
-          table.insert(self.allGroundRects , cc.rect(posX,posY,self.cellGap,self.cellGap))
+          local r = cc.rect(posX,posY,self.cellGap,self.cellGap)
+          table.insert(self.allGroundRects , r)
           if self.downGroundRects[index % self.levelWidth +1 ] == nil then
-              self.downGroundRects[index % self.levelWidth +1] = cc.rect(posX,posY,self.cellGap,self.cellGap)
+              self.downGroundRects[index % self.levelWidth +1] = r
           end
         end
     end
@@ -146,11 +147,14 @@ function NeverHideApp:onGameUpdate()
   self.role:applyFroce(Vector2D.new(0,-2))
   --上下左右 用于标记那个方向上已经进行过碰撞检测了
   local collisionState = {0,0,0,0}
+
+
   for i,v in ipairs(self.allGroundRects) do
-    local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 15 , self.role:getPositionY()-10 , 30,30),v)
+    local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,30),v)
 
     --  if cc.rectContainsPoint(v , cc.p(self.role:getPositionX() , self.role:getPositionY()-10)) then
-    if state == "top" and collisionState[1] ~= 1 and self.role:jumpState() == false then
+    if state == "top" and collisionState[1] ~= 1 and self.role:jumpState() == false and self:findeRectInGround(v) then
+      print("state",state,i);
       collisionState[1] = 1
         -- print("state",state,i);
         self.role.speed.y = 0
@@ -159,18 +163,28 @@ function NeverHideApp:onGameUpdate()
         self:setRoleByPosX(rX)
       --  break
     elseif state == "left" and collisionState[3] ~= 1 then
+      print("state",state,i);
       collisionState[3] = 1
         -- print("state",state,i);
-        self.role:applyFroce(Vector2D.new(-5,0))
+      self.role:applyFroce(Vector2D.new(-5,0))
         -- self.role:applyFroce(Vector2D.new(0,2))
-        self.role:setPosX(v.x - 30)
+      self.role:setHSpeed(0)
     elseif state == "right" and collisionState[4] ~= 1 then
         print("state",state,i);
       collisionState[4] = 1
       self.role:applyFroce(Vector2D.new(5,0))
-      self.role:setPosX(v.x + v.width + 15)
+      self.role:setHSpeed(0)
    end
   end
+end
+
+function NeverHideApp:findeRectInGround(rect)
+  for i,v in ipairs(self.downGroundRects) do
+    if v == rect then
+      return true
+    end
+  end
+  return false
 end
 
 function NeverHideApp:addTouchListener()
@@ -220,9 +234,11 @@ end
 
 --根据任务的X坐标查找到对应地面的Y坐标 设置位置
 function NeverHideApp:setRoleByPosX(posx)
+
   for i,v in ipairs(self.downGroundRects) do
     if posx <= (v.x + v.width) then
         self.role:setPosY(v.y + v.height)
+        print("setRoleByPosX" , v.y + v.height)
         break
     end
   end
