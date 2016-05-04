@@ -198,7 +198,6 @@ end
 
 
 function NeverHideApp:onTouch(event)
-  dump(event)
 	local point = event.points["0"]
 	if event.name == "began" then
       self.touchX = point.x
