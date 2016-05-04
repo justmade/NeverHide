@@ -190,7 +190,7 @@ function NeverHideApp:findeRectInGround(rect)
   end
   return false
 end
-
+  
 function NeverHideApp:addTouchListener()
     self.touchController = TouchController.new()
     self:addChild(self.touchController)
@@ -198,7 +198,7 @@ end
 
 
 function NeverHideApp:onTouch(event)
-	local point = event.points["0"] 
+	local point = event.points["0"]
 	if event.name == "began" then
       self.touchX = point.x
       self.touchY = point.y
