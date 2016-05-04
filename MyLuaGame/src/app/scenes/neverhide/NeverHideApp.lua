@@ -153,6 +153,7 @@ function NeverHideApp:onGameUpdate()
     local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,30),v)
 
     --  if cc.rectContainsPoint(v , cc.p(self.role:getPositionX() , self.role:getPositionY()-10)) then
+    -- 与砖面上面的碰撞只发生在地面砖块上
     if state == "top" and collisionState[1] ~= 1 and self.role:jumpState() == false and self:findeRectInGround(v) then
       print("state",state,i);
       collisionState[1] = 1
@@ -160,7 +161,9 @@ function NeverHideApp:onGameUpdate()
         self.role.speed.y = 0
         self.role:applyFroce(Vector2D.new(0,2))
         local rX = self.role:getPositionX()
-        self:setRoleByPosX(rX)
+        print("rX",rX , v.x)
+        -- self:setRoleByPosX(v.x)
+        self.role:setPosY(v.y + v.height)
       --  break
     elseif state == "left" and collisionState[3] ~= 1 then
       print("state",state,i);
@@ -178,6 +181,7 @@ function NeverHideApp:onGameUpdate()
   end
 end
 
+--返回是否是地面表层的砖块
 function NeverHideApp:findeRectInGround(rect)
   for i,v in ipairs(self.downGroundRects) do
     if v == rect then
