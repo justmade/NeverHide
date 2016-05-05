@@ -12,6 +12,7 @@ function Role:ctor(x,y,mass)
 	self.acceleration = Vector2D.new(0,0);
 
 
+
   -- local drawSp = display.newDrawNode()
   self.height = 30
   -- drawSp:drawLine(cc.p(10,10) , cc.p(20,20) , 2 , cc.c4f(1.0,1.0,1.0,1.0))
@@ -40,11 +41,13 @@ function Role:onUpdate()
   self:setPositionY(self.position.y)
   -- print("pos",self.position.y)
   self.acceleration:mult(0)
+  self:checkBoundary()
 end
 
 function Role:setPosY(value)
   self.position.y = value
 end
+
 
 function Role:jumpState()
   -- print('speed',self.speed.y)
@@ -83,8 +86,14 @@ function Role:getHeight()
     return self.height
 end
 
-function Role:onEnter()
-
+function Role:checkBoundary()
+  if self.position.x  < 0 then
+      self.position.x = 0
+  elseif self.position.x > display.width - 50 then
+    self.position.x = display.width - 50
+  end
 end
+
+
 
 return Role
