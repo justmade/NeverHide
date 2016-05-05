@@ -9,6 +9,7 @@ local BloodEffect = require("app.scenes.neverhide.HeroUpgradeEffect")
 local Vector2D    = require("app.scenes.neverhide.Vector2D")
 local TouchController = import(".TouchController")
 local Collision   = require("app.data.Collision")
+local BlockData   = require("app.data.BlockData")
 
 
 function NeverHideApp:ctor()
@@ -25,6 +26,9 @@ function NeverHideApp:ctor()
     self.currentLevel = 1;
     self.playerSpeed = Vector2D.new(5,0)
     self.moveSpeed = Vector2D.new(0,0)
+    --天花板下降的距离
+    self.ceilOffset = 0;
+
     self:onEnter();
 
 end
@@ -68,15 +72,17 @@ function NeverHideApp:resetMap()
 
   self:findGround()
   self:findUpGround();
-  self:setRoleByPosX(self.role:getPositionX())
+  -- self:setRoleByPosX(self.role:getPositionX())
   self:resetUpGround();
 
   local function sortRectByPosX(a,b)
-    return a.x < b.x
+    return a:getRect().x < b:getRect().x
   end
 
   table.sort(self.downGroundRects , sortRectByPosX)
   table.sort(self.upGroundRects , sortRectByPosX)
+  self.role:setPosX(40)
+  self.role:setPosY(300)
   -- scheduleUpdate()
   self:scheduleUpdate(handler(self, self.update))
   -- self.currentEnterFrame = scheduler.scheduleUpdate(handler(self,self.update))
@@ -85,10 +91,11 @@ end
 
 
 function NeverHideApp:resetUpGround()
-  local oriY = self.upContainer:getPositionY();
-  self.upContainer:setPositionY(oriY + self.levelHeight * self.cellGap);
-  for i,v in ipairs(self.upGroundRects) do
-    v.y = v.y + self.levelHeight * self.cellGap
+  self.ceilOffset = 0
+  self.upContainer:setPositionY(self.levelHeight * self.cellGap);
+  for i,v in ipairs(self.upAllGroundRects) do
+    local rect = v:getRect()
+    rect.y =  rect.y +self.levelHeight * self.cellGap
   end
 end
 
@@ -122,10 +129,14 @@ function NeverHideApp:findGround()
           local posX = (index % self.levelWidth) * self.cellGap
           local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap
           local r = cc.rect(posX,posY,self.cellGap,self.cellGap)
-          table.insert(self.allGroundRects , r)
+          local bd
           if self.downGroundRects[index % self.levelWidth +1 ] == nil then
-              self.downGroundRects[index % self.levelWidth +1] = r
+            bd = BlockData.new(r,BlockData.GROUND);
+            self.downGroundRects[index % self.levelWidth +1] = bd
+          else
+            bd = BlockData.new(r,BlockData.NORMAL);
           end
+          table.insert(self.allGroundRects , bd)
         end
     end
 end
@@ -140,39 +151,44 @@ function NeverHideApp:findUpGround()
         local posX = (index % self.levelWidth) * self.cellGap
         local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap
         local r    = cc.rect(posX,posY,self.cellGap,self.cellGap)
-        self.upGroundRects[index % self.levelWidth +1] = r
-        table.insert(self.upAllGroundRects , r)
+        local bd = BlockData.new(r,BlockData.CEIL);
+        self.upGroundRects[index % self.levelWidth +1] = bd
+        table.insert(self.upAllGroundRects , bd)
       end
   end
 end
 
 function NeverHideApp:closingUpGroud()
+    self.ceilOffset = self.ceilOffset - 3;
     local posY = self.upContainer:getPositionY()
     self.upContainer:setPositionY(posY - 3)
-
     for i,v in ipairs(self.upAllGroundRects) do
-        v.y = v.y - 3
+      local rect = v:getRect();
+      rect.y = rect.y - 3
     end
 end
 
 
 
 --人物与障碍碰撞
-function NeverHideApp:onRoleCollision()
+function NeverHideApp:onRoleCollisionGround()
   self.role:applyFroce(Vector2D.new(0,-2))
   --上下左右 用于标记那个方向上已经进行过碰撞检测了
   local collisionState = {0,0,0,0}
 
   for i,v in ipairs(self.allGroundRects) do
-    local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,30),v)
+    local blockRect = v:getRect();
+    local blockType = v:getType();
+
+    local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,30),blockRect)
     -- 与砖面上面的碰撞只发生在地面砖块上
-    if state == "top" and collisionState[1] ~= 1 and self.role:jumpState() == false and self:findeRectInGround(v) then
+    if state == "top" and collisionState[1] ~= 1 and self.role:jumpState() == false and blockType == BlockData.GROUND then
       print("state",state,i);
       collisionState[1] = 1
       self.role.speed.y = 0
       self.role:applyFroce(Vector2D.new(0,2))
       local rX = self.role:getPositionX()
-      self.role:setPosY(v.y + v.height)
+      self.role:setPosY(blockRect.y + blockRect.height)
     elseif state == "left" and collisionState[3] ~= 1 then
       collisionState[3] = 1
       self.role:applyFroce(Vector2D.new(-5,0))
@@ -182,6 +198,34 @@ function NeverHideApp:onRoleCollision()
       self.role:applyFroce(Vector2D.new(5,0))
       self.role:setHSpeed(0)
    end
+  end
+end
+
+--检测上方的路面是否和人物碰到
+function NeverHideApp:onRoleCollisionCeil()
+    local collisionState = {0,0,0,0}
+
+  for i,v in ipairs(self.upAllGroundRects) do
+      local blockRect = v:getRect();
+      local blockType = v:getType();
+
+      local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,40),blockRect)
+      if state == "bottom" and collisionState[1] ~= 1 then
+        print("state",state,i);
+        collisionState[1] = 1
+        self.role.speed.y = 0
+        self.role:applyFroce(Vector2D.new(0,-3))
+        -- local rX = self.role:getPositionX()
+        -- self.role:setPosY(blockRect.y + blockRect.height)
+      elseif state == "left" and collisionState[3] ~= 1 then
+        collisionState[3] = 1
+        self.role:applyFroce(Vector2D.new(-5,0))
+        self.role:setHSpeed(0)
+      elseif state == "right" and collisionState[4] ~= 1 then
+        collisionState[4] = 1
+        self.role:applyFroce(Vector2D.new(5,0))
+        self.role:setHSpeed(0)
+     end
   end
 end
 
@@ -209,30 +253,29 @@ function NeverHideApp:setRoleByPosX(posx)
   for i,v in ipairs(self.downGroundRects) do
     if posx <= (v.x + v.width) then
         self.role:setPosY(v.y + v.height)
-        print("setRoleByPosX" , v.y + v.height)
+        -- print("setRoleByPosX" , v.y + v.height)
         break
     end
   end
 end
 
 function NeverHideApp:update(dt)
-  local isHit = self:checkSafeArea(self.role)
-
-  if isHit then
-    self:getResult(true)
-    scheduler.unscheduleGlobal(self.currentEnterFrame)
-  end
-
+  local isHit = self:onRoleCollisionCeil(self.role)
+  --
+  -- if isHit then
+  --     self:unscheduleUpdate()
+  -- end
+  --
+  --
 
   if self:checkGoundHit() then
-      scheduler.unscheduleGlobal(self.currentEnterFrame)
-      self.currentLevel = self.currentLevel+1
-      if self.currentLevel >3 then
-          self.currentLevel =1
-      end
-      scheduler.performWithDelayGlobal(handler(self,self.resetMap), 1)
+      print("checkGoundHit")
+      self:unscheduleUpdate()
+      self.currentLevel = self.currentLevel + 1
+      if   self.currentLevel > 3 then  self.currentLevel = 1 end
+      self:resetMap()
   end
-  self:onRoleCollision();
+  self:onRoleCollisionGround();
   local mV = self.touchController.moveVec;
   local jV = self.touchController.jumpVec
   self.role:applyFroce(jV)
@@ -268,24 +311,26 @@ end
 
 --判断垂直方向上，上下矩形是否有碰撞
 function NeverHideApp:checkGoundHit()
-    for i,v in ipairs(self.upGroundRects) do
-        local upRect = v
-        local downRect = self.downGroundRects[i]
-        local b = cc.rectIntersectsRect(upRect , downRect)
-        return b
-    end
-end
+    -- for i,v in ipairs(self.upAllGroundRects) do
+    --    for j,k in ipairs(self.allGroundRects) do
+    --       local upRect = v:getRect()
+    --       local downRect = k:getRect();
+    --       local b = cc.rectIntersectsRect(upRect , downRect)
+    --       if b then return b end
+    --    end
+    -- end
+    -- return false
 
---检测上方的路面是否和人物碰到
-function NeverHideApp:checkSafeArea(_role)
     for i,v in ipairs(self.upGroundRects) do
-        local rect = v;
-        --80为碰撞区域调整的位置，FixME
-        local b =  cc.rectContainsPoint(rect , cc.p(_role:getPositionX() , _role:getPositionY() + 80))
-        if b then return b end
+      local upRect = v:getRect()
+      local downRect = self.downGroundRects[i]:getRect()
+      local b = cc.rectIntersectsRect(upRect , downRect)
+      if b then return b end
     end
     return false
 end
+
+
 
 
 

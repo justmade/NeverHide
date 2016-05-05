@@ -27,7 +27,7 @@ function Collision.rectIntersectsRect(rectA,rectB)
         --Top
         return "top"
       else
-        return "bottm"
+        return "bottom"
         --Bottom
       end
     else
