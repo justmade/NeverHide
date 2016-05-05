@@ -86,6 +86,7 @@ function Role:getHeight()
     return self.height
 end
 
+--移动的边界
 function Role:checkBoundary()
   if self.position.x  < 0 then
       self.position.x = 0
