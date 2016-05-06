@@ -60,7 +60,7 @@ end
 function NeverHideApp:resetMap()
   self.downContainer:removeAllChildrenWithCleanup(true)
   self.upContainer:removeAllChildrenWithCleanup(true)
-  local MapInfo     = require("app.data.mapdata.Level"..self.currentLevel)
+  local MapInfo     = require("app.data.mapdata.stymap"..self.currentLevel)
   --获取tield地图
   local t = MapInfo.layers
   self.upData   = t[1].data;
@@ -106,11 +106,11 @@ function NeverHideApp:drawTiledMap(data,container)
       local id = v-1;
       local index = i-1;
       local posX = (index % self.levelWidth) * self.cellGap
-      local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap
-      local tX   = id % 5
-      local tY   = math.floor(id / 5)
-      local grassLeft = display.newSprite("gfx/ground.png")
-      grassLeft:setTextureRect(cc.rect(tX * self.cellGap , tY * self.cellGap ,self.cellGap,self.cellGap));
+      local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap - self.cellGap
+      local tX   = id % 7
+      local tY   = math.floor(id / 7)
+      local grassLeft = display.newSprite("gfx/mapsheet.png")
+      grassLeft:setTextureRect(cc.rect(tX * (self.cellGap+2) , tY *(self.cellGap+2) ,self.cellGap,self.cellGap));
       grassLeft:setPosition(posX,posY)
       grassLeft:setAnchorPoint(cc.p(0,0))
       container:addChild(grassLeft);
@@ -127,7 +127,7 @@ function NeverHideApp:findGround()
         if v ~= 0 then
           local index = i-1;
           local posX = (index % self.levelWidth) * self.cellGap
-          local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap
+          local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap - self.cellGap
           local r = cc.rect(posX,posY,self.cellGap,self.cellGap)
           local bd
           if self.downGroundRects[index % self.levelWidth +1 ] == nil then
@@ -149,7 +149,7 @@ function NeverHideApp:findUpGround()
       if v ~= 0 then
         local index = i-1;
         local posX = (index % self.levelWidth) * self.cellGap
-        local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap
+        local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap - self.cellGap
         local r    = cc.rect(posX,posY,self.cellGap,self.cellGap)
         local bd = BlockData.new(r,BlockData.CEIL);
         self.upGroundRects[index % self.levelWidth +1] = bd
@@ -159,12 +159,12 @@ function NeverHideApp:findUpGround()
 end
 
 function NeverHideApp:closingUpGroud()
-    self.ceilOffset = self.ceilOffset - 3;
+    self.ceilOffset = self.ceilOffset - 1;
     local posY = self.upContainer:getPositionY()
-    self.upContainer:setPositionY(posY - 3)
+    self.upContainer:setPositionY(posY - 1)
     for i,v in ipairs(self.upAllGroundRects) do
       local rect = v:getRect();
-      rect.y = rect.y - 3
+      rect.y = rect.y - 1
     end
 end
 
@@ -271,8 +271,8 @@ function NeverHideApp:update(dt)
   if self:checkGoundHit() then
       print("checkGoundHit")
       self:unscheduleUpdate()
-      self.currentLevel = self.currentLevel + 1
-      if   self.currentLevel > 3 then  self.currentLevel = 1 end
+      -- self.currentLevel = self.currentLevel + 1
+      -- if   self.currentLevel > 3 then  self.currentLevel = 1 end
       self:resetMap()
   end
   self:onRoleCollisionGround();
