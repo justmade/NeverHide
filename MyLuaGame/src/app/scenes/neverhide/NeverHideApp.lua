@@ -23,7 +23,7 @@ function NeverHideApp:ctor()
     self.upData = {}
     self.downData = {}
     self.downSpeed = 3;
-    self.currentLevel = 1;
+    self.currentLevel = 2;
     self.playerSpeed = Vector2D.new(5,0)
     self.moveSpeed = Vector2D.new(0,0)
     --天花板下降的距离
@@ -271,8 +271,8 @@ function NeverHideApp:update(dt)
   if self:checkGoundHit() then
       print("checkGoundHit")
       self:unscheduleUpdate()
-      -- self.currentLevel = self.currentLevel + 1
-      -- if   self.currentLevel > 3 then  self.currentLevel = 1 end
+      self.currentLevel = self.currentLevel + 1
+      if   self.currentLevel > 2 then  self.currentLevel = 1 end
       self:resetMap()
   end
   self:onRoleCollisionGround();
