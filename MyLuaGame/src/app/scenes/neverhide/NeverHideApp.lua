@@ -23,7 +23,7 @@ function NeverHideApp:ctor()
     self.upData = {}
     self.downData = {}
     self.downSpeed = 3;
-    self.currentLevel = 2;
+    self.currentLevel = 1;
     self.playerSpeed = Vector2D.new(5,0)
     self.moveSpeed = Vector2D.new(0,0)
     --天花板下降的距离
@@ -60,7 +60,7 @@ end
 function NeverHideApp:resetMap()
   self.downContainer:removeAllChildrenWithCleanup(true)
   self.upContainer:removeAllChildrenWithCleanup(true)
-  local MapInfo     = require("app.data.mapdata.stymap"..self.currentLevel)
+  local MapInfo     = require("app.data.mapdata.colormap"..self.currentLevel)
   --获取tield地图
   local t = MapInfo.layers
   self.upData   = t[1].data;
@@ -109,8 +109,8 @@ function NeverHideApp:drawTiledMap(data,container)
       local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap - self.cellGap
       local tX   = id % 7
       local tY   = math.floor(id / 7)
-      local grassLeft = display.newSprite("gfx/mapsheet.png")
-      grassLeft:setTextureRect(cc.rect(tX * (self.cellGap+2) , tY *(self.cellGap+2) ,self.cellGap,self.cellGap));
+      local grassLeft = display.newSprite("gfx/colorsheet.png")
+      grassLeft:setTextureRect(cc.rect(tX * (self.cellGap) , tY *(self.cellGap) ,self.cellGap,self.cellGap));
       grassLeft:setPosition(posX,posY)
       grassLeft:setAnchorPoint(cc.p(0,0))
       container:addChild(grassLeft);
@@ -131,10 +131,10 @@ function NeverHideApp:findGround()
           local r = cc.rect(posX,posY,self.cellGap,self.cellGap)
           local bd
           if self.downGroundRects[index % self.levelWidth +1 ] == nil then
-            bd = BlockData.new(r,BlockData.GROUND);
+            bd = BlockData.new(r,BlockData.GROUND,v);
             self.downGroundRects[index % self.levelWidth +1] = bd
           else
-            bd = BlockData.new(r,BlockData.NORMAL);
+            bd = BlockData.new(r,BlockData.NORMAL,v);
           end
           table.insert(self.allGroundRects , bd)
         end
@@ -151,7 +151,7 @@ function NeverHideApp:findUpGround()
         local posX = (index % self.levelWidth) * self.cellGap
         local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap - self.cellGap
         local r    = cc.rect(posX,posY,self.cellGap,self.cellGap)
-        local bd = BlockData.new(r,BlockData.CEIL);
+        local bd = BlockData.new(r,BlockData.CEIL,v);
         self.upGroundRects[index % self.levelWidth +1] = bd
         table.insert(self.upAllGroundRects , bd)
       end
@@ -177,29 +177,63 @@ function NeverHideApp:onRoleCollisionGround()
   local collisionState = {0,0,0,0}
 
   for i,v in ipairs(self.allGroundRects) do
+
     local blockRect = v:getRect();
     local blockType = v:getType();
-
-    local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,30),blockRect)
-    -- 与砖面上面的碰撞只发生在地面砖块上
-    if state == "top" and collisionState[1] ~= 1 and self.role:jumpState() == false and blockType == BlockData.GROUND then
-      print("state",state,i);
-      collisionState[1] = 1
-      self.role.speed.y = 0
-      self.role:applyFroce(Vector2D.new(0,2))
-      local rX = self.role:getPositionX()
-      self.role:setPosY(blockRect.y + blockRect.height)
-    elseif state == "left" and collisionState[3] ~= 1 then
-      collisionState[3] = 1
-      self.role:applyFroce(Vector2D.new(-5,0))
-      self.role:setHSpeed(0)
-    elseif state == "right" and collisionState[4] ~= 1 then
-      collisionState[4] = 1
-      self.role:applyFroce(Vector2D.new(5,0))
-      self.role:setHSpeed(0)
+    local colorID   = v:getColorID();
+    --只检测颜色与主角不一样的情况
+    if colorID ~= self.role.colorID then
+      local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,30),blockRect)
+      -- 与砖面上面的碰撞只发生在地面砖块上
+      local isGround = self:checkGroundState(blockRect)
+      if state == "top" and collisionState[1] ~= 1 and self.role:jumpState() == false and isGround then
+        -- print("state",state,i);
+        collisionState[1] = 1
+        self.role.speed.y = 0
+        self.role:applyFroce(Vector2D.new(0,2))
+        local rX = self.role:getPositionX()
+        self.role:setPosY(blockRect.y + blockRect.height)
+      elseif state == "left" and collisionState[3] ~= 1 then
+        collisionState[3] = 1
+        self.role:applyFroce(Vector2D.new(-5,0))
+        self.role:setHSpeed(0)
+      elseif state == "right" and collisionState[4] ~= 1 then
+        collisionState[4] = 1
+        self.role:applyFroce(Vector2D.new(5,0))
+        self.role:setHSpeed(0)
+     end
    end
   end
 end
+
+--[[人物进行与地面的碰撞检测时，需要确认：1，这个砖块是不是最上层的。
+  2，如果不是最上层的，那么上层是不是颜色id和主角的是一致的。
+  满足其中一种情况才可以发现『top』方向上的碰撞检测
+--]]
+function NeverHideApp:checkGroundState(rect)
+  local px = rect.x / self.cellGap + 1;
+  local py = self.levelHeight - rect.y / self.cellGap;
+
+  -- print("checkGroundState",py)
+  -- print("checkGroundState",px)
+  local uPx = px ;
+  local uPy = py - 1 ;
+  local upData = self:getGoundDataByXY(uPx,uPy);
+  if upData == 0 then
+    return true
+  elseif upData == self.role.colorID then
+    return true
+  else
+    return false
+  end
+end
+
+function NeverHideApp:getGoundDataByXY(x,y)
+  local index = (y-1) * self.levelWidth  + x
+  return self.downData[index]
+end
+
+
 
 --检测上方的路面是否和人物碰到
 function NeverHideApp:onRoleCollisionCeil()
@@ -284,7 +318,7 @@ function NeverHideApp:update(dt)
   self.role:onUpdate();
   jV:mult(0)
 
-  self:closingUpGroud();
+  -- self:closingUpGroud();
 end
 
 

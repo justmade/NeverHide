@@ -17,10 +17,16 @@ function Role:ctor(x,y,mass)
   self.height = 30
   -- drawSp:drawLine(cc.p(10,10) , cc.p(20,20) , 2 , cc.c4f(1.0,1.0,1.0,1.0))
   -- drawSp:drawRect({0,0,self.height,self.height},{fillColor = cc.c4f(1.0,0,0,1.0)})
-  self.sp = display.newSprite("gfx/blood.png")
+  -- self.sp = display.newSprite("gfx/blood.png")
+  -- self:addChild(self.sp)
+  -- self.sp:setScale(30/20);
+  -- self.sp:setAnchorPoint(cc.p(0.5,0))
+  self.sp = cc.DrawNode:create()
+  self.sp:drawSolidRect(cc.p(0,0),cc.p(30,30) ,cc.c4f(185/255,70/255,70/255,1))
   self:addChild(self.sp)
-  self.sp:setScale(30/20);
-  self.sp:setAnchorPoint(cc.p(0.5,0))
+  self.sp:setPositionX(-15)
+
+  self.colorID = 3;
 end
 
 function Role:onUpdate()
