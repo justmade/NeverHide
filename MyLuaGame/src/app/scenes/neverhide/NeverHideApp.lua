@@ -69,7 +69,7 @@ function NeverHideApp:resetMap()
   self.levelHeight = t[1].height;
   self:drawTiledMap(self.upData , self.upContainer);
   self:drawTiledMap(self.downData , self.downContainer);
-
+  self:resolvingPro(MapInfo.tilesets)
   self:findGround()
   self:findUpGround();
   -- self:setRoleByPosX(self.role:getPositionX())
@@ -88,7 +88,17 @@ function NeverHideApp:resetMap()
   -- self.currentEnterFrame = scheduler.scheduleUpdate(handler(self,self.update))
 end
 
-
+function NeverHideApp:resolvingPro(_info)
+  local mapTiles = _info[1].tiles
+  self.itemInfo = {}
+  for i,v in ipairs(mapTiles) do
+    self.itemInfo[(v.id+1)..""] = {}
+    for k,m in pairs(v.properties) do
+      self.itemInfo[(v.id+1)..""][k] = m
+    end
+  end
+  dump(self.itemInfo)
+end
 
 function NeverHideApp:resetUpGround()
   self.ceilOffset = 0
@@ -130,9 +140,11 @@ function NeverHideApp:findGround()
           local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap - self.cellGap
           local r = cc.rect(posX,posY,self.cellGap,self.cellGap)
           local bd
-          if self.downGroundRects[index % self.levelWidth +1 ] == nil then
+          if self.downGroundRects[index % self.levelWidth +1 ] == nil and self.itemInfo[v..""] == nil then
             bd = BlockData.new(r,BlockData.GROUND,v);
             self.downGroundRects[index % self.levelWidth +1] = bd
+          elseif self.itemInfo[v..""]~= nil then
+            bd = BlockData.new(r,BlockData.DIAMOND,self.itemInfo[v..""].type)
           else
             bd = BlockData.new(r,BlockData.NORMAL,v);
           end
@@ -181,10 +193,15 @@ function NeverHideApp:onRoleCollisionGround()
     local blockRect = v:getRect();
     local blockType = v:getType();
     local colorID   = v:getColorID();
+
     --只检测颜色与主角不一样的情况
     if colorID ~= self.role.colorID then
       local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,30),blockRect)
-      -- 与砖面上面的碰撞只发生在地面砖块上
+      if state ~= "nothing" and blockType == BlockData.DIAMOND then
+          self.role.colorID = colorID
+        return
+      end
+
       local isGround = self:checkGroundState(blockRect)
       if state == "top" and collisionState[1] ~= 1 and self.role:jumpState() == false and isGround then
         -- print("state",state,i);

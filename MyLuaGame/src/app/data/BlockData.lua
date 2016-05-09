@@ -6,11 +6,13 @@ BlockData.CEIL = "ceil"
 
 BlockData.NORMAL = "normal"
 
+BlockData.DIAMOND = "diamond"
+
 
 function BlockData:ctor (rect , type , id)
     self.blockRect = rect
     self.blockType = type
-    self.colorID   = id
+    self.colorID   = tonumber(id)
 end
 
 function BlockData:getRect()
