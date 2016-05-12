@@ -29,6 +29,18 @@ function Role:ctor(x,y,mass)
   self.colorID = 30003;
 end
 
+function Role:setRoleColor(_colorID)
+  self.colorID = tonumber(_colorID)
+  self.sp:clear()
+  if self.colorID == 30001 then
+    self.sp:drawSolidRect(cc.p(0,0),cc.p(30,30) ,cc.c4f(70/255,70/255,185/255,1))
+  elseif self.colorID == 30002 then
+    self.sp:drawSolidRect(cc.p(0,0),cc.p(30,30) ,cc.c4f(70/255,185/255,159/255,1))
+  elseif self.colorID == 30003 then
+    self.sp:drawSolidRect(cc.p(0,0),cc.p(30,30) ,cc.c4f(185/255,70/255,70/255,1))
+  end
+end
+
 function Role:onUpdate()
   self.speed.y = self.speed.y + self.acceleration.y
   -- print("onUpdate" , self.speed.y )

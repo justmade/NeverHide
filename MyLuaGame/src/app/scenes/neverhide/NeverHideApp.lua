@@ -221,8 +221,9 @@ function NeverHideApp:onRoleCollisionGround()
     --只检测颜色与主角不一样的情况
     if colorID ~= self.role.colorID then
       local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,30),blockRect)
+      --与道具的碰撞检测
       if state ~= "nothing" and blockType == BlockData.DIAMOND then
-          self.role.colorID = colorID
+          self.role:setRoleColor(colorID)
           table.remove(self.allGroundRects,i)
           local px = blockRect.x / self.cellGap + 1;
           local py = self.levelHeight - blockRect.y / self.cellGap;
