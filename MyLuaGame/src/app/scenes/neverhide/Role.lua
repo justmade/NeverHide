@@ -26,7 +26,7 @@ function Role:ctor(x,y,mass)
   self:addChild(self.sp)
   self.sp:setPositionX(-15)
 
-  self.colorID = 3;
+  self.colorID = 30003;
 end
 
 function Role:onUpdate()

@@ -9,10 +9,11 @@ BlockData.NORMAL = "normal"
 BlockData.DIAMOND = "diamond"
 
 
-function BlockData:ctor (rect , type , id)
+function BlockData:ctor (rect , type , colorID , tiledID)
     self.blockRect = rect
     self.blockType = type
-    self.colorID   = tonumber(id)
+    self.colorID   = tonumber(colorID)
+    self.tiledID   = tiledID
 end
 
 function BlockData:getRect()
@@ -25,6 +26,10 @@ end
 
 function BlockData:getColorID()
     return self.colorID
+end
+
+function BlockData:getTiledID()
+    return self.tiledID
 end
 
 return BlockData

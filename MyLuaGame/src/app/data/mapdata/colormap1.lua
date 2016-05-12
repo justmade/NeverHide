@@ -8,7 +8,7 @@ return {
   height = 14,
   tilewidth = 50,
   tileheight = 50,
-  nextobjectid = 1,
+  nextobjectid = 22,
   properties = {},
   tilesets = {
     {
@@ -30,21 +30,45 @@ return {
       tilecount = 6,
       tiles = {
         {
+          id = 0,
+          properties = {
+            ["colorID"] = "30001",
+            ["type"] = "block"
+          }
+        },
+        {
+          id = 1,
+          properties = {
+            ["colorID"] = "30002",
+            ["type"] = "block"
+          }
+        },
+        {
+          id = 2,
+          properties = {
+            ["colorID"] = "30003",
+            ["type"] = "block"
+          }
+        },
+        {
           id = 3,
           properties = {
-            ["type"] = "3"
+            ["colorID"] = "30003",
+            ["type"] = "color_change"
           }
         },
         {
           id = 4,
           properties = {
-            ["type"] = "2"
+            ["colorID"] = "30002",
+            ["type"] = "color_change"
           }
         },
         {
           id = 5,
           properties = {
-            ["type"] = "1"
+            ["colorID"] = "30001",
+            ["type"] = "color_change"
           }
         }
       }

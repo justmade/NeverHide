@@ -51,6 +51,9 @@ function NeverHideApp:onEnter()
   self:addChild(self.upContainer);
   self:addChild(self.downContainer);
 
+  self.renderContainer = display.newLayer();
+  self:addChild(self.renderContainer)
+
   self:resetMap()
   self:addTouchListener()
 
@@ -67,8 +70,8 @@ function NeverHideApp:resetMap()
   self.downData = t[2].data;
   self.levelWidth = t[1].width;
   self.levelHeight = t[1].height;
-  self:drawTiledMap(self.upData , self.upContainer);
-  self:drawTiledMap(self.downData , self.downContainer);
+  -- self:drawTiledMap(self.upData , self.upContainer);
+  -- self:drawTiledMap(self.downData , self.downContainer);
   self:resolvingPro(MapInfo.tilesets)
   self:findGround()
   self:findUpGround();
@@ -88,6 +91,23 @@ function NeverHideApp:resetMap()
   -- self.currentEnterFrame = scheduler.scheduleUpdate(handler(self,self.update))
 end
 
+--table深拷贝
+function NeverHideApp:deepcopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in next, orig, nil do
+            copy[self:deepcopy(orig_key)] = self:deepcopy(orig_value)
+        end
+        setmetatable(copy, self:deepcopy(getmetatable(orig)))
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
+end
+
+--根据tiles字段 解析id和对应的属性
 function NeverHideApp:resolvingPro(_info)
   local mapTiles = _info[1].tiles
   self.itemInfo = {}
@@ -138,15 +158,17 @@ function NeverHideApp:findGround()
           local index = i-1;
           local posX = (index % self.levelWidth) * self.cellGap
           local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap - self.cellGap
-          local r = cc.rect(posX,posY,self.cellGap,self.cellGap)
+          local r    = cc.rect(posX,posY,self.cellGap,self.cellGap)
+          local tiledId   = v - 1;
           local bd
-          if self.downGroundRects[index % self.levelWidth +1 ] == nil and self.itemInfo[v..""] == nil then
-            bd = BlockData.new(r,BlockData.GROUND,v);
+          local itemInfo = self.itemInfo[v..""]
+          if self.downGroundRects[index % self.levelWidth +1 ] == nil and itemInfo.type == "block" then
+            bd = BlockData.new(r,BlockData.GROUND,itemInfo.colorID,tiledId);
             self.downGroundRects[index % self.levelWidth +1] = bd
-          elseif self.itemInfo[v..""]~= nil then
-            bd = BlockData.new(r,BlockData.DIAMOND,self.itemInfo[v..""].type)
+          elseif itemInfo.type == "color_change" then
+            bd = BlockData.new(r,BlockData.DIAMOND,itemInfo.colorID,tiledId)
           else
-            bd = BlockData.new(r,BlockData.NORMAL,v);
+            bd = BlockData.new(r,BlockData.NORMAL,itemInfo.colorID,tiledId);
           end
           table.insert(self.allGroundRects , bd)
         end
@@ -163,7 +185,9 @@ function NeverHideApp:findUpGround()
         local posX = (index % self.levelWidth) * self.cellGap
         local posY = self.levelHeight * self.cellGap -  math.floor(index / self.levelWidth) * self.cellGap - self.cellGap
         local r    = cc.rect(posX,posY,self.cellGap,self.cellGap)
-        local bd = BlockData.new(r,BlockData.CEIL,v);
+        local tiledId   = v - 1;
+        local itemInfo = self.itemInfo[v..""]
+        local bd = BlockData.new(r,BlockData.CEIL,itemInfo.colorID,tiledId);
         self.upGroundRects[index % self.levelWidth +1] = bd
         table.insert(self.upAllGroundRects , bd)
       end
@@ -199,6 +223,10 @@ function NeverHideApp:onRoleCollisionGround()
       local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,30),blockRect)
       if state ~= "nothing" and blockType == BlockData.DIAMOND then
           self.role.colorID = colorID
+          table.remove(self.allGroundRects,i)
+          local px = blockRect.x / self.cellGap + 1;
+          local py = self.levelHeight - blockRect.y / self.cellGap;
+          self:setGoundDataByXY(px,py,0)
         return
       end
 
@@ -225,6 +253,7 @@ end
 
 --[[人物进行与地面的碰撞检测时，需要确认：1，这个砖块是不是最上层的。
   2，如果不是最上层的，那么上层是不是颜色id和主角的是一致的。
+  3，上层是不是道具
   满足其中一种情况才可以发现『top』方向上的碰撞检测
 --]]
 function NeverHideApp:checkGroundState(rect)
@@ -236,9 +265,16 @@ function NeverHideApp:checkGroundState(rect)
   local uPx = px ;
   local uPy = py - 1 ;
   local upData = self:getGoundDataByXY(uPx,uPy);
+  local itemInfo
+  if upData ~= 0 then
+    itemInfo = self.itemInfo[upData..""]
+  end
+
   if upData == 0 then
     return true
-  elseif upData == self.role.colorID then
+  elseif tonumber(itemInfo.colorID) == tonumber(self.role.colorID) then
+    return true
+  elseif itemInfo.type == "color_change" then
     return true
   else
     return false
@@ -248,6 +284,11 @@ end
 function NeverHideApp:getGoundDataByXY(x,y)
   local index = (y-1) * self.levelWidth  + x
   return self.downData[index]
+end
+
+function NeverHideApp:setGoundDataByXY(x,y ,value)
+    local index = (y-1) * self.levelWidth  + x
+    self.downData[index] = value
 end
 
 
@@ -262,7 +303,6 @@ function NeverHideApp:onRoleCollisionCeil()
 
       local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,40),blockRect)
       if state == "bottom" and collisionState[1] ~= 1 then
-        print("state",state,i);
         collisionState[1] = 1
         self.role.speed.y = 0
         self.role:applyFroce(Vector2D.new(0,-3))
@@ -319,6 +359,7 @@ function NeverHideApp:update(dt)
   --
   --
 
+  self:tiledRender()
   if self:checkGoundHit() then
       print("checkGoundHit")
       self:unscheduleUpdate()
@@ -336,6 +377,23 @@ function NeverHideApp:update(dt)
   jV:mult(0)
 
   -- self:closingUpGroud();
+end
+
+--绘制场景
+function NeverHideApp:tiledRender()
+  self.renderContainer:removeAllChildren()
+  for i,v in ipairs(self.allGroundRects) do
+    local blockData = v;
+    local id   = v:getTiledID()
+    local vRect = v:getRect()
+    local tX   = id % 7
+    local tY   = math.floor(id / 7)
+    local grassLeft = display.newSprite("gfx/colorsheet.png")
+    grassLeft:setTextureRect(cc.rect(tX * (self.cellGap) , tY *(self.cellGap) ,self.cellGap,self.cellGap));
+    grassLeft:setPosition(vRect.x,vRect.y)
+    grassLeft:setAnchorPoint(cc.p(0,0))
+    self.renderContainer:addChild(grassLeft)
+  end
 end
 
 
@@ -357,21 +415,8 @@ function NeverHideApp:resetGame(dt)
     self.currentEnterFrame = scheduler.scheduleUpdateGlobal(handler(self,self.update))
 end
 
-
-
-
 --判断垂直方向上，上下矩形是否有碰撞
 function NeverHideApp:checkGoundHit()
-    -- for i,v in ipairs(self.upAllGroundRects) do
-    --    for j,k in ipairs(self.allGroundRects) do
-    --       local upRect = v:getRect()
-    --       local downRect = k:getRect();
-    --       local b = cc.rectIntersectsRect(upRect , downRect)
-    --       if b then return b end
-    --    end
-    -- end
-    -- return false
-
     for i,v in ipairs(self.upGroundRects) do
       local upRect = v:getRect()
       local downRect = self.downGroundRects[i]:getRect()
