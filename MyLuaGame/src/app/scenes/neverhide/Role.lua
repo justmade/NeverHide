@@ -21,10 +21,16 @@ function Role:ctor(x,y,mass)
   -- self:addChild(self.sp)
   -- self.sp:setScale(30/20);
   -- self.sp:setAnchorPoint(cc.p(0.5,0))
+  self.roleContainer = display.newSprite();
   self.sp = cc.DrawNode:create()
   self.sp:drawSolidRect(cc.p(0,0),cc.p(30,30) ,cc.c4f(185/255,70/255,70/255,1))
-  self:addChild(self.sp)
+  self.roleContainer:addChild(self.sp)
   self.sp:setPositionX(-15)
+
+  local eye = cc.DrawNode:create()
+  eye:drawSolidCircle(cc.p(0,15),10,math.pi,20,cc.c4f(1,1,1,1))
+  self.roleContainer:addChild(eye)
+  self:addChild(self.roleContainer)
 
   self.colorID = 30003;
 end

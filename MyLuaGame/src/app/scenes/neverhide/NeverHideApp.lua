@@ -23,7 +23,7 @@ function NeverHideApp:ctor()
     self.upData = {}
     self.downData = {}
     self.downSpeed = 3;
-    self.currentLevel = 1;
+    self.currentLevel = 2;
     self.playerSpeed = Vector2D.new(5,0)
     self.moveSpeed = Vector2D.new(0,0)
     --天花板下降的距离
@@ -42,7 +42,7 @@ function NeverHideApp:onEnter()
   bg:setAnchorPoint(cc.p(0,0))
 
   local r = Role.new(40,300);
-  self:addChild(r)
+
   self.role = r
 
   self.downContainer = display.newSprite();
@@ -53,7 +53,7 @@ function NeverHideApp:onEnter()
 
   self.renderContainer = display.newLayer();
   self:addChild(self.renderContainer)
-
+  self:addChild(r)
   self:resetMap()
   self:addTouchListener()
 
@@ -61,13 +61,14 @@ end
 
 --读取新的地图
 function NeverHideApp:resetMap()
+  self.renderContainer:removeAllChildren()
   self.downContainer:removeAllChildrenWithCleanup(true)
   self.upContainer:removeAllChildrenWithCleanup(true)
   local MapInfo     = require("app.data.mapdata.colormap"..self.currentLevel)
   --获取tield地图
   local t = MapInfo.layers
-  self.upData   = t[1].data;
-  self.downData = t[2].data;
+  self.upData   = self:deepcopy(t[1].data);
+  self.downData = self:deepcopy(t[2].data);
   self.levelWidth = t[1].width;
   self.levelHeight = t[1].height;
   -- self:drawTiledMap(self.upData , self.upContainer);
@@ -86,6 +87,7 @@ function NeverHideApp:resetMap()
   table.sort(self.upGroundRects , sortRectByPosX)
   self.role:setPosX(40)
   self.role:setPosY(300)
+  self.role:setRoleColor(30003)
   -- scheduleUpdate()
   self:scheduleUpdate(handler(self, self.update))
   -- self.currentEnterFrame = scheduler.scheduleUpdate(handler(self,self.update))
@@ -171,6 +173,7 @@ function NeverHideApp:findGround()
             bd = BlockData.new(r,BlockData.NORMAL,itemInfo.colorID,tiledId);
           end
           table.insert(self.allGroundRects , bd)
+          self.renderContainer:addChild(bd)
         end
     end
 end
@@ -190,14 +193,13 @@ function NeverHideApp:findUpGround()
         local bd = BlockData.new(r,BlockData.CEIL,itemInfo.colorID,tiledId);
         self.upGroundRects[index % self.levelWidth +1] = bd
         table.insert(self.upAllGroundRects , bd)
+        self.renderContainer:addChild(bd)
       end
   end
 end
 
 function NeverHideApp:closingUpGroud()
     self.ceilOffset = self.ceilOffset - 1;
-    local posY = self.upContainer:getPositionY()
-    self.upContainer:setPositionY(posY - 1)
     for i,v in ipairs(self.upAllGroundRects) do
       local rect = v:getRect();
       rect.y = rect.y - 1
@@ -225,6 +227,7 @@ function NeverHideApp:onRoleCollisionGround()
       if state ~= "nothing" and blockType == BlockData.DIAMOND then
           self.role:setRoleColor(colorID)
           table.remove(self.allGroundRects,i)
+          self.renderContainer:removeChild(v)
           local px = blockRect.x / self.cellGap + 1;
           local py = self.levelHeight - blockRect.y / self.cellGap;
           self:setGoundDataByXY(px,py,0)
@@ -301,25 +304,34 @@ function NeverHideApp:onRoleCollisionCeil()
   for i,v in ipairs(self.upAllGroundRects) do
       local blockRect = v:getRect();
       local blockType = v:getType();
-
-      local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,40),blockRect)
-      if state == "bottom" and collisionState[1] ~= 1 then
-        collisionState[1] = 1
-        self.role.speed.y = 0
-        self.role:applyFroce(Vector2D.new(0,-3))
-        -- local rX = self.role:getPositionX()
-        -- self.role:setPosY(blockRect.y + blockRect.height)
-      elseif state == "left" and collisionState[3] ~= 1 then
-        collisionState[3] = 1
-        self.role:applyFroce(Vector2D.new(-5,0))
-        self.role:setHSpeed(0)
-      elseif state == "right" and collisionState[4] ~= 1 then
-        collisionState[4] = 1
-        self.role:applyFroce(Vector2D.new(5,0))
-        self.role:setHSpeed(0)
-     end
+      local blockColorId = v:getColorID();
+      if blockColorId ~= self.role.colorID then
+        local state = Collision.rectIntersectsRect(cc.rect(self.role:getPositionX() - 20 , self.role:getPositionY() - 5 , 40,40),blockRect)
+        if state == "bottom" and collisionState[1] ~= 1 then
+          collisionState[1] = 1
+          self.role.speed.y = 0
+          self.role:applyFroce(Vector2D.new(0,-3))
+          -- local rX = self.role:getPositionX()
+          -- self.role:setPosY(blockRect.y + blockRect.height)
+        elseif state == "left" and collisionState[3] ~= 1 then
+          collisionState[3] = 1
+          self.role:applyFroce(Vector2D.new(-5,0))
+          self.role:setHSpeed(0)
+        elseif state == "right" and collisionState[4] ~= 1 then
+          collisionState[4] = 1
+          self.role:applyFroce(Vector2D.new(5,0))
+          self.role:setHSpeed(0)
+       end
+    end
   end
 end
+
+
+function NeverHideApp:getCeilDataByXY(x,y)
+  local index = (y-1) * self.levelWidth  + x
+  return self.upData[index]
+end
+
 
 --返回是否是地面表层的砖块
 function NeverHideApp:findeRectInGround(rect)
@@ -359,8 +371,10 @@ function NeverHideApp:update(dt)
   -- end
   --
   --
+  --绘制
+  self:tiledRender(self.allGroundRects)
+  self:tiledRender(self.upAllGroundRects)
 
-  self:tiledRender()
   if self:checkGoundHit() then
       print("checkGoundHit")
       self:unscheduleUpdate()
@@ -377,23 +391,13 @@ function NeverHideApp:update(dt)
   self.role:onUpdate();
   jV:mult(0)
 
-  -- self:closingUpGroud();
+  self:closingUpGroud();
 end
 
 --绘制场景
-function NeverHideApp:tiledRender()
-  self.renderContainer:removeAllChildren()
-  for i,v in ipairs(self.allGroundRects) do
-    local blockData = v;
-    local id   = v:getTiledID()
-    local vRect = v:getRect()
-    local tX   = id % 7
-    local tY   = math.floor(id / 7)
-    local grassLeft = display.newSprite("gfx/colorsheet.png")
-    grassLeft:setTextureRect(cc.rect(tX * (self.cellGap) , tY *(self.cellGap) ,self.cellGap,self.cellGap));
-    grassLeft:setPosition(vRect.x,vRect.y)
-    grassLeft:setAnchorPoint(cc.p(0,0))
-    self.renderContainer:addChild(grassLeft)
+function NeverHideApp:tiledRender(_arr)
+  for i,v in ipairs(_arr) do
+      v:onRender()
   end
 end
 
